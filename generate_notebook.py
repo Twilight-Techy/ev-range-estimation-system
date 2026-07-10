@@ -48,13 +48,9 @@ This notebook elevates the Hybrid Range Estimation System to industry "Mastercla
 3.  **Dynamic Meta-Learner Fusion:** Replaces the static alpha weighting (`40% Physics / 60% ML`). An AI Meta-Learner dynamically analyzes the environment (Temperature, Battery Health) and automatically decides whether to trust the Physics model or the LSTM in real-time.""")
 
 # --- Code 1: Setup ---
-add_code("""!pip install keras-tuner tf-keras -q
+add_code("""!pip install keras-tuner -q
 
 import os
-# CRITICAL: Force Kaggle to use Keras 2 (tf-keras) instead of Keras 3. 
-# Keras 3 currently has a major bug where it fails to convert GPU-trained LSTMs to TFLite (CudnnRNNV3 error).
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -262,8 +258,13 @@ add_markdown("""---
 add_code("""# Save Keras Model
 lstm_model.save("/kaggle/working/lstm_optimized_model.keras")
 
-# Convert Model to true TFLite 8-bit format using Post-Training Quantization (PTQ)
-converter = tf.lite.TFLiteConverter.from_keras_model(lstm_model)
+# CRITICAL FIX: Kaggle's Keras 3 trains LSTMs using CuDNN (GPU), which crashes TFLite Micro.
+# By exporting the model, Keras 3 automatically strips the GPU training ops and creates
+# a clean, pure inference graph (SavedModel) that TFLite can convert perfectly!
+lstm_model.export("/kaggle/working/clean_saved_model")
+
+# Convert from the clean inference graph to TFLite 8-bit format
+converter = tf.lite.TFLiteConverter.from_saved_model("/kaggle/working/clean_saved_model")
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 tflite_model = converter.convert()
 
