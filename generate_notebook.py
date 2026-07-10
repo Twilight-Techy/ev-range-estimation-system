@@ -48,7 +48,7 @@ This notebook elevates the Hybrid Range Estimation System to industry "Mastercla
 3.  **Dynamic Meta-Learner Fusion:** Replaces the static alpha weighting (`40% Physics / 60% ML`). An AI Meta-Learner dynamically analyzes the environment (Temperature, Battery Health) and automatically decides whether to trust the Physics model or the LSTM in real-time.""")
 
 # --- Code 1: Setup ---
-add_code("""!pip install keras-tuner tensorflow-model-optimization -q
+add_code("""!pip install keras-tuner -q
 
 import pandas as pd
 import numpy as np
@@ -69,7 +69,6 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
 import keras_tuner as kt
-import tensorflow_model_optimization as tfmot
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -211,24 +210,10 @@ print(f"✅ Optimal Architecture Found! LSTM Units: {best_hps.get('units')}, LR:
 lstm_model = tuner.hypermodel.build(best_hps)
 lstm_model.fit(train_gen, validation_data=val_gen, epochs=15, callbacks=[stop_early], verbose=0)""")
 
-# --- Markdown 6 ---
-add_markdown("""### 4.2 Quantization-Aware Training (QAT)
-Now that we have the best model, we prepare it for the ESP32 microcontroller. We use the `tensorflow_model_optimization` library to "fake" the 8-bit precision loss during training, forcing the network to learn to compensate for it.""")
-
-# --- Code 6 ---
-add_code("""quantize_model = tfmot.quantization.keras.quantize_model
-qat_lstm_model = quantize_model(lstm_model)
-
-qat_lstm_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), 
-                       loss='mse', metrics=['mae'])
-
-print("Fine-tuning model with Quantization Awareness (Simulating ESP32 constraints)...")
-qat_lstm_model.fit(train_gen, validation_data=val_gen, epochs=3, verbose=1)
-
-# Generate Predictions
-lstm_preds_val = qat_lstm_model.predict(val_gen, verbose=0).flatten()
-lstm_preds_test = qat_lstm_model.predict(test_gen, verbose=0).flatten()
-print("✅ QAT Complete.")""")
+# Generate Predictions from the Tuned LSTM
+lstm_preds_val = lstm_model.predict(val_gen, verbose=0).flatten()
+lstm_preds_test = lstm_model.predict(test_gen, verbose=0).flatten()
+print("✅ Hyperparameter Tuning & Model Training Complete.")""")
 
 # --- Markdown 7 ---
 add_markdown("""---
@@ -270,18 +255,18 @@ add_markdown("""---
 ## 6. Model Export & TFLite Quantization""")
 
 # --- Code 8 ---
-add_code("""# Save QAT Keras Model
-qat_lstm_model.save("/kaggle/working/lstm_qat_model.keras")
+add_code("""# Save Keras Model
+lstm_model.save("/kaggle/working/lstm_optimized_model.keras")
 
-# Convert QAT Model to true TFLite 8-bit format
-converter = tf.lite.TFLiteConverter.from_keras_model(qat_lstm_model)
+# Convert Model to true TFLite 8-bit format using Post-Training Quantization (PTQ)
+converter = tf.lite.TFLiteConverter.from_keras_model(lstm_model)
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 tflite_model = converter.convert()
 
 with open('/kaggle/working/lstm_model_quantized.tflite', 'wb') as f:
     f.write(tflite_model)
     
-print("✅ Successfully exported pure 8-bit QAT TFLite model to /kaggle/working/lstm_model_quantized.tflite!")""")
+print("✅ Successfully exported INT8 PTQ TFLite model to /kaggle/working/lstm_model_quantized.tflite!")""")
 
 # --- Markdown 9 ---
 add_markdown("""---
