@@ -1,14 +1,26 @@
 import json
+import uuid
 
 notebook = {
  "cells": [],
- "metadata": {},
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.10.12"
+  }
+ },
  "nbformat": 4,
  "nbformat_minor": 5
 }
 
 def add_markdown(text):
     notebook["cells"].append({
+        "id": str(uuid.uuid4())[:8],
         "cell_type": "markdown",
         "metadata": {},
         "source": [line + "\n" for line in text.split("\n")]
@@ -16,6 +28,7 @@ def add_markdown(text):
 
 def add_code(text):
     notebook["cells"].append({
+        "id": str(uuid.uuid4())[:8],
         "cell_type": "code",
         "execution_count": None,
         "metadata": {},
