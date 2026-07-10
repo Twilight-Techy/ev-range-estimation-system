@@ -258,8 +258,15 @@ add_markdown("""---
 add_code("""# Save Keras Model
 lstm_model.save("/kaggle/working/lstm_optimized_model.keras")
 
+# CRITICAL FIX for TFLite Micro: Kaggle trains using CuDNN (GPU) LSTMs.
+# TFLite Micro does not support CuDNN. We must rebuild the model on the CPU 
+# to force standard LSTM ops before converting!
+with tf.device('/CPU:0'):
+    cpu_model = tuner.hypermodel.build(best_hps)
+    cpu_model.set_weights(lstm_model.get_weights())
+
 # Convert Model to true TFLite 8-bit format using Post-Training Quantization (PTQ)
-converter = tf.lite.TFLiteConverter.from_keras_model(lstm_model)
+converter = tf.lite.TFLiteConverter.from_keras_model(cpu_model)
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 tflite_model = converter.convert()
 
