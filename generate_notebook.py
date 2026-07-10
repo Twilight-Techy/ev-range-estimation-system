@@ -258,18 +258,57 @@ add_markdown("""---
 add_code("""# Save Keras Model
 lstm_model.save("/kaggle/working/lstm_optimized_model.keras")
 
-# CRITICAL FIX: Kaggle's Keras 3 trains LSTMs using CuDNN (GPU), which crashes TFLite Micro.
-# By exporting the model, Keras 3 automatically strips the GPU training ops and creates
-# a clean, pure inference graph (SavedModel) that TFLite can convert perfectly!
-lstm_model.export("/kaggle/working/clean_saved_model")
+# CRITICAL FIX: The ONLY mathematically guaranteed way to strip CuDNN ops from a Keras 3 LSTM 
+# on Kaggle is to rebuild the model in a 100% CPU-isolated subprocess and load the weights!
+lstm_model.save_weights("/kaggle/working/lstm_weights.weights.h5")
+import json
+export_data = {
+    "hps": best_hps.values,
+    "input_shape": [window_size, X_train_scaled.shape[1]]
+}
+with open("/kaggle/working/export_data.json", "w") as f:
+    json.dump(export_data, f)
 
-# Convert from the clean inference graph to TFLite 8-bit format
-converter = tf.lite.TFLiteConverter.from_saved_model("/kaggle/working/clean_saved_model")
+converter_script = '''
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # KILL THE GPU
+
+import tensorflow as tf
+import keras
+import json
+
+with open("/kaggle/working/export_data.json", "r") as f:
+    export_data = json.load(f)
+
+hps = export_data["hps"]
+input_shape = tuple(export_data["input_shape"])
+
+# Rebuild identical model architecture on CPU
+model = keras.Sequential([
+    keras.layers.LSTM(units=hps['units'], input_shape=input_shape, return_sequences=False),
+    keras.layers.BatchNormalization(),
+    keras.layers.Dropout(hps['dropout']),
+    keras.layers.Dense(32, activation='relu'),
+    keras.layers.Dense(1, activation='linear')
+])
+
+model.load_weights("/kaggle/working/lstm_weights.weights.h5")
+model.export("/kaggle/working/clean_cpu_saved_model")
+
+converter = tf.lite.TFLiteConverter.from_saved_model("/kaggle/working/clean_cpu_saved_model")
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 tflite_model = converter.convert()
 
-with open('/kaggle/working/lstm_model_quantized.tflite', 'wb') as f:
+with open("/kaggle/working/lstm_model_quantized.tflite", "wb") as f:
     f.write(tflite_model)
+'''
+
+with open("/kaggle/working/convert.py", "w") as f:
+    f.write(converter_script)
+
+import subprocess
+print("Executing isolated CPU TFLite conversion...")
+subprocess.run(["python", "/kaggle/working/convert.py"], check=True)
     
 print("✅ Successfully exported INT8 PTQ TFLite model to /kaggle/working/lstm_model_quantized.tflite!")""")
 
