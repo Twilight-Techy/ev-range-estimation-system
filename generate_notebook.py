@@ -87,9 +87,17 @@ We load the highly detailed `maruwa_synthetic_data.csv` dataset, which spans 10 
 
 # --- Code 2 ---
 add_code("""try:
+    # Try Kaggle attached dataset path
     df = pd.read_csv("/kaggle/input/maruwa-synthetic-data/maruwa_synthetic_data.csv")
 except FileNotFoundError:
-    df = pd.read_csv("maruwa_synthetic_data.csv")
+    try:
+        # Try local path
+        df = pd.read_csv("maruwa_synthetic_data.csv")
+    except FileNotFoundError:
+        # Ultimate fallback: Download directly from GitHub
+        print("Dataset not found locally. Downloading from GitHub...")
+        url = "https://raw.githubusercontent.com/Twilight-Techy/ev-range-estimation-system/main/maruwa_synthetic_data.csv"
+        df = pd.read_csv(url)
 
 print(f"Dataset shape: {df.shape}")""")
 
