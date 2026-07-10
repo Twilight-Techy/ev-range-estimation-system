@@ -208,7 +208,7 @@ best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 print(f"✅ Optimal Architecture Found! LSTM Units: {best_hps.get('units')}, LR: {best_hps.get('learning_rate')}")
 
 lstm_model = tuner.hypermodel.build(best_hps)
-lstm_model.fit(train_gen, validation_data=val_gen, epochs=15, callbacks=[stop_early], verbose=0)""")
+lstm_model.fit(train_gen, validation_data=val_gen, epochs=15, callbacks=[stop_early], verbose=0)
 
 # Generate Predictions from the Tuned LSTM
 lstm_preds_val = lstm_model.predict(val_gen, verbose=0).flatten()
