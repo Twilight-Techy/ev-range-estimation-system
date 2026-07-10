@@ -287,7 +287,8 @@ input_shape = tuple(export_data["input_shape"])
 # This is mandatory! TFLite Micro cannot handle dynamic batch sizes (None) in LSTM TensorArrays.
 # Setting unroll=True physically deletes the while_loop, making TFLite conversion 100% bulletproof.
 model = keras.Sequential([
-    keras.layers.LSTM(units=hps['units'], batch_input_shape=(1,) + input_shape, return_sequences=False, unroll=True),
+    keras.Input(batch_shape=(1,) + input_shape),
+    keras.layers.LSTM(units=hps['units'], return_sequences=False, unroll=True),
     keras.layers.BatchNormalization(),
     keras.layers.Dropout(hps['dropout']),
     keras.layers.Dense(32, activation='relu'),
