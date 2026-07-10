@@ -283,9 +283,11 @@ with open("/kaggle/working/export_data.json", "r") as f:
 hps = export_data["hps"]
 input_shape = tuple(export_data["input_shape"])
 
-# Rebuild identical model architecture on CPU
+# Rebuild identical model architecture on CPU WITH FIXED BATCH SIZE = 1
+# This is mandatory! TFLite Micro cannot handle dynamic batch sizes (None) in LSTM TensorArrays.
+# Setting unroll=True physically deletes the while_loop, making TFLite conversion 100% bulletproof.
 model = keras.Sequential([
-    keras.layers.LSTM(units=hps['units'], input_shape=input_shape, return_sequences=False),
+    keras.layers.LSTM(units=hps['units'], batch_input_shape=(1,) + input_shape, return_sequences=False, unroll=True),
     keras.layers.BatchNormalization(),
     keras.layers.Dropout(hps['dropout']),
     keras.layers.Dense(32, activation='relu'),
