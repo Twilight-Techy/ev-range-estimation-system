@@ -344,15 +344,36 @@ results_df = pd.DataFrame(results).T
 print("\\n--- Final Model Evaluation Results (Test Set) ---")
 print(results_df.sort_values(by="R2", ascending=False))
 
-# Visualization: R-Squared (R2)
+# Save metrics to CSV for the results chapter
+results_df.to_csv("/kaggle/working/evaluation_metrics.csv")
+print("✅ Saved metrics to /kaggle/working/evaluation_metrics.csv")
+
+# Visualization 1: R-Squared (R2)
 plt.figure(figsize=(10, 6))
 sns.barplot(x=results_df.index, y=results_df['R2'], palette="magma")
-plt.title('R-Squared (R2) Comparison - Higher is Better', fontsize=14)
+plt.title('R-Squared (R2) Comparison', fontsize=14)
 plt.ylabel('R2 Score')
-plt.ylim(0, 1.1)
+plt.ylim(min(0, results_df['R2'].min() - 0.2), max(1.1, results_df['R2'].max() + 0.2))
 plt.xticks(rotation=45, ha='right')
 plt.tight_layout()
-plt.show()""")
+plt.savefig("/kaggle/working/r2_comparison.png", dpi=300)
+plt.show()
+
+# Visualization 2: Time-Series Actual vs Predicted (First 500 seconds of Test Set)
+plt.figure(figsize=(14, 6))
+plt.plot(y_test_aligned[:500], label='Actual True Range', color='black', linewidth=2)
+plt.plot(physics_preds_test[:500], label='Physics Model', color='blue', linestyle='--')
+plt.plot(lstm_preds_test[:500], label='LSTM Model', color='orange', linestyle='-.')
+plt.plot(hybrid_preds_test[:500], label='Meta-Learner Hybrid', color='green', linewidth=2)
+plt.title('Actual vs Predicted Range Over Time (Test Set Sample)', fontsize=14)
+plt.xlabel('Time (seconds)')
+plt.ylabel('Remaining Range (km)')
+plt.legend()
+plt.tight_layout()
+plt.savefig("/kaggle/working/actual_vs_predicted_timeseries.png", dpi=300)
+plt.show()
+
+print("✅ Saved high-resolution plots to /kaggle/working/ for your results chapter!")""")
 
 # Write JSON to file
 with open("Kaggle_Maruwa_Training.ipynb", "w") as f:
