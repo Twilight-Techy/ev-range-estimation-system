@@ -208,7 +208,23 @@ best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 print(f"✅ Optimal Architecture Found! LSTM Units: {best_hps.get('units')}, LR: {best_hps.get('learning_rate')}")
 
 lstm_model = tuner.hypermodel.build(best_hps)
-lstm_model.fit(train_gen, validation_data=val_gen, epochs=15, callbacks=[stop_early], verbose=0)
+print("Training final optimized LSTM...")
+history = lstm_model.fit(train_gen, validation_data=val_gen, epochs=15, callbacks=[stop_early], verbose=1)
+
+# Save and Plot Training History for Results Chapter
+history_df = pd.DataFrame(history.history)
+history_df.to_csv("/kaggle/working/training_history.csv", index=False)
+
+plt.figure(figsize=(10, 6))
+plt.plot(history.history['loss'], label='Training Loss (MSE)', color='blue', linewidth=2)
+plt.plot(history.history['val_loss'], label='Validation Loss (MSE)', color='orange', linestyle='--', linewidth=2)
+plt.title('LSTM Training Convergence', fontsize=14)
+plt.xlabel('Epochs')
+plt.ylabel('Loss (MSE)')
+plt.legend()
+plt.tight_layout()
+plt.savefig("/kaggle/working/training_convergence.png", dpi=300)
+plt.show()
 
 # Generate Predictions from the Tuned LSTM
 lstm_preds_val = lstm_model.predict(val_gen, verbose=0).flatten()
