@@ -19,3 +19,6 @@ __pycache__/
 *.tflite
 *.json
 /tuner/
+
+# Generated dataset (recreate with: python generate_data.py)
+maruwa_synthetic_data.csv
